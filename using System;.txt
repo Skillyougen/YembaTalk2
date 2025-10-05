@@ -1,0 +1,163 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Speech.Recognition;
+using System.Speech.Synthesis;
+
+namespace TEST_TRADUCTEUR_AUDIO_YEMBA_2._0
+{
+    public partial class Form1 : Form
+    {
+        // Objet pour écouter et reconnaitre la voix de l'utilisateur
+        private SpeechRecognitionEngine reco;
+
+        // Objet pour lire le texte en voix (Synthese vocale)
+        private SpeechSynthesizer synth;
+
+        // Dictionnaire contenant les traductions francais vers yemba
+        private Dictionary<string, string> dictionnaireYemba;
+
+        public Form1()
+        {
+            InitializeComponent();
+            InitialiserDictionnaire(); // Chargement des traductions dans le dictionnaire
+        }
+        /// <summary>
+        /// Evenement déclenché quand le formulaire se charge
+        /// </summary>
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                // Initialise le moteur de reconnaissance vocale pour le fr
+                reco = new SpeechRecognitionEngine(new System.Globalization.CultureInfo("fr-FR"));
+
+                // Configure le moteur pour ecouter le microphone par defaut
+                reco.SetInputToDefaultAudioDevice();
+
+                // Charge une grammaire libre (permet de reconnaitre tout type de phrase)
+                reco.LoadGrammar(new DictationGrammar());
+
+                // Liaison de l'evenement SpeechRecogized à notre methode de traitement
+                reco.SpeechRecognized += Recognizer_SpeechRecognized;
+
+                // Initialise le moteur de synthese vocale (pour lire la traduction)
+                synth = new SpeechSynthesizer();
+
+                synth.SetOutputToDefaultAudioDevice(); // Sortie audio : haut-parleurs ou casque
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erreur d'initilisation : " + ex.Message);
+            }
+        }
+    
+        ///<summary>
+        /// Bouton pour demarrer l'ecoute du micro la reconnaissance vocale
+        /// </summary>
+
+        private void btnStart_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Lancement de la reconnaissance en mode continu
+                reco.RecognizeAsync(RecognizeMode.Single);
+                MessageBox.Show("Parlez maintenant je vous ecoute ...");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erreur : " + ex.Message);
+            }
+        }
+        ///<summary>
+        /// Evenement déclenché des qu'une phrase est reconnue par le micro
+        /// </summary>
+
+        private void Recognizer_SpeechRecognized(object sender, SpeechRecognizedEventArgs e)
+        {
+            // Récuperation du texte en francais et conversion en miniscules pour faciliter la recherche
+            string texteFR = e.Result.Text.ToLower();
+
+            // Affichage du texte reconnu dans la zone "Francais"
+            txtFrancais.Text = texteFR;
+
+            // Traduction du tetxe reconnu en yemba
+            string traductionYemba = TraduireEnYemba(texteFR);
+
+            // Affichage de la traduction dans la zone "Yemba"
+            txtYemba.Text = traductionYemba;
+
+            // Lecture de la traduction à haute voix
+            synth.SpeakAsync(traductionYemba);
+        }   
+    
+
+        ///<summary>
+        /// Evenement déclenché des qu'une phrase est reconnue par le micro
+        /// </summary>
+
+       private void InitialiserDictionnaire()
+        {
+            dictionnaireYemba = new Dictionary<string, string>()
+            {
+                {"bonjour", "bóó"},
+                { "merci", "tɛ́ɛ̀"},
+                { "au revoir", "ndɔ̀ɔ̀"},
+                { "papa", "tata"},
+                { "maman", "mama"},
+                { "comment ça va", "ndzé mɔ̀"},
+                { "bien", "mɔ̀"},
+                { "mal", "mbɛ̀"},
+                { "maison", "ndɔ̀"},
+                { "manger", "li"},
+                { "eau", "mé"},
+                { "ami", "bó"},
+                { "frère", "nyɔ̀"},
+                { "soeur", "nyɔ̀"},
+                { "travail", "ŋwà"},
+                { "école", "sɔ̀"},
+                { "jour", "lié"},
+                { "nuit", "ndù"},
+                { "soleil", "bɩ́"},
+                { "lune", "mɛ́ɛ̀"}
+            };
+        }
+
+        /// <summary>
+        /// Traduction d'une phrase francaise en yemba en utilisant le dictionnaire local
+        /// </summary>
+        private string TraduireEnYemba(string phraseFR)
+        {
+            // Découpage de la phrase en mots séparés par des espaces ou ponctuactions
+            string[] mots = phraseFR.Split(' ', ',', '.', ';', '!', '?');
+
+            // Liste qui contiendra la tradction finale 
+            List<string> traductionMots = new List<string>();
+            foreach (var mot in mots)
+            {
+                // Ignorer les espaces vides ou les chaines vides
+                if (string.IsNullOrWhiteSpace(mot)) continue;
+                // Si le mot existe dans le dictionnaire => on l'ajoute en yemba
+                if (dictionnaireYemba.ContainsKey(mot))
+                {
+                    traductionMots.Add(dictionnaireYemba[mot]);
+                }
+                else
+                {
+                    // Si le mot n'est pas trouvé => on le met entre crochets pour signaler qu'il n'est pas traduit
+                    traductionMots.Add($"[{mot}]");
+                }
+            }
+            // Retourne la phrase finale reconstituée
+            return string.Join(" ", traductionMots);
+        }
+    }
+}
+
+
